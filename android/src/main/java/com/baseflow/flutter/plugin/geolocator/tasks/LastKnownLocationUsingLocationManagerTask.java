@@ -4,15 +4,16 @@ import android.location.Location;
 import android.location.LocationManager;
 
 import com.baseflow.flutter.plugin.geolocator.data.LocationMapper;
+import com.baseflow.flutter.plugin.geolocator.data.Result;
 
-public class OneTimeLocationTask extends LocationTask {
+class LastKnownLocationUsingLocationManagerTask extends LocationUsingLocationManagerTask {
 
-    public OneTimeLocationTask(TaskContext context) {
+    public LastKnownLocationUsingLocationManagerTask(TaskContext context) {
         super(context);
     }
 
     @Override
-    protected void acquirePosition() {
+    public void startTask() {
         LocationManager locationManager = getLocationManager();
 
         Location bestLocation = null;
@@ -25,19 +26,14 @@ public class OneTimeLocationTask extends LocationTask {
             }
         }
 
+        Result result = getTaskContext().getResult();
         if(bestLocation == null) {
-            handleError("ERROR", "Failed to get location");
+            result.success(null);
+            stopTask();
             return;
         }
 
-        getTaskContext().getResult().success(LocationMapper.toHashMap(bestLocation));
-    }
-
-    @Override
-    protected void handleError(String code, String message) {
-        getTaskContext().getResult().error(
-                code,
-                message,
-                null);
+        result.success(LocationMapper.toHashMap(bestLocation));
+        stopTask();
     }
 }

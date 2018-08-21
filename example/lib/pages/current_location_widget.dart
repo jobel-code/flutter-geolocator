@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geolocator/models/location_accuracy.dart';
-import 'package:geolocator/models/location_options.dart';
-import 'package:geolocator/models/position.dart';
+
+import '../common_widgets/placeholder_widget.dart';
 
 class CurrentLocationWidget extends StatefulWidget {
   @override
@@ -11,27 +10,12 @@ class CurrentLocationWidget extends StatefulWidget {
 }
 
 class _LocationState extends State<CurrentLocationWidget> {
-  final Geolocator _geolocator = Geolocator();
   Position _position;
-  _LocationState();
 
   @override
   void initState() {
     super.initState();
     _initPlatformState();
-
-    _geolocator
-        .getPositionStream(LocationOptions(
-            accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 10))
-        .handleError((onError) {
-      setState(() {
-        _position = null;
-      });
-    }).listen((Position position) {
-      setState(() {
-        _position = position;
-      });
-    });
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
@@ -39,8 +23,8 @@ class _LocationState extends State<CurrentLocationWidget> {
     Position position;
     // Platform messages may fail, so we use a try/catch PlatformException.
     try {
-      position =
-          await _geolocator.getPosition(LocationAccuracy.bestForNavigation);
+      position = await Geolocator()
+          .getCurrentPosition(LocationAccuracy.bestForNavigation);
     } on PlatformException {
       position = null;
     }
@@ -57,10 +41,20 @@ class _LocationState extends State<CurrentLocationWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final position = _position == null
-        ? 'Unknown'
-        : _position.latitude.toString() + ', ' + _position.longitude.toString();
+    return FutureBuilder(
+        future: Geolocator.checkGeolocationStatus(),
+        builder:
+            (BuildContext context, AsyncSnapshot<GeolocationStatus> snapshot) {
+          if (!snapshot.hasData) {
+            return Center(child: CircularProgressIndicator());
+          }
 
-    return new Text('Current location: $position\n');
+          if (snapshot.data == GeolocationStatus.denied) {
+            return PlaceholderWidget("Location services disabled",
+                "Enable location services for this App using the device settings.");
+          }
+
+          return PlaceholderWidget("Current location:", _position.toString());
+        });
   }
 }

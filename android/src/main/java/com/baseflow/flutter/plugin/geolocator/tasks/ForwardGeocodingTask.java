@@ -10,7 +10,7 @@ import com.baseflow.flutter.plugin.geolocator.data.Result;
 import java.io.IOException;
 import java.util.List;
 
-public class ForwardGeocodingTask extends Task {
+class ForwardGeocodingTask extends Task {
     private final Activity mActivity;
 
     private String mAddressToLookup;
@@ -25,11 +25,7 @@ public class ForwardGeocodingTask extends Task {
     private static String parseAddress(Object arguments) {
         if(arguments == null) return null;
 
-        try {
-            return (String) arguments;
-        } catch(Exception ex) {
-            return null;
-        }
+        return (String) arguments;
     }
 
     @Override

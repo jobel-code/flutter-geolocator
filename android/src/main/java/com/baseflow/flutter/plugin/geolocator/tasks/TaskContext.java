@@ -1,5 +1,7 @@
 package com.baseflow.flutter.plugin.geolocator.tasks;
 
+import android.content.Context;
+
 import com.baseflow.flutter.plugin.geolocator.OnCompletionListener;
 import com.baseflow.flutter.plugin.geolocator.data.Result;
 
@@ -7,7 +9,7 @@ import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.PluginRegistry;
 
-public final class TaskContext {
+final class TaskContext {
     private final Object mArguments;
     private final OnCompletionListener mCompletionListener;
     private final PluginRegistry.Registrar mRegistrar;
@@ -37,23 +39,13 @@ public final class TaskContext {
         return mRegistrar;
     }
 
+    public Context getAndroidContext() { return mRegistrar.activity() != null ? mRegistrar.activity() : mRegistrar.activeContext(); }
+
     public Result getResult() {
         return mResult;
     }
 
-    public static TaskContext BuildFromMethodResult(
-            PluginRegistry.Registrar registrar,
-            MethodChannel.Result result,
-            OnCompletionListener completionListener) {
-
-        return TaskContext.BuildFromMethodResult(
-            registrar,
-            result,
-            null,
-            completionListener);
-    }
-
-    public static TaskContext BuildFromMethodResult(
+    public static TaskContext buildFromMethodResult(
             PluginRegistry.Registrar registrar,
             MethodChannel.Result methodResult,
             Object arguments,
@@ -67,20 +59,7 @@ public final class TaskContext {
                 completionListener);
     }
 
-    public static TaskContext BuildFromEventSink(
-            PluginRegistry.Registrar registrar,
-            EventChannel.EventSink eventSink,
-            OnCompletionListener completionListener) {
-        Result result = new Result(eventSink);
-
-        return new TaskContext(
-                registrar,
-                result,
-                null,
-                completionListener);
-    }
-
-    public static TaskContext BuildFromEventSink(
+    public static TaskContext buildFromEventSink(
             PluginRegistry.Registrar registrar,
             EventChannel.EventSink eventSink,
             Object arguments,

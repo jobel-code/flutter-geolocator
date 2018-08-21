@@ -1,6 +1,4 @@
-import 'dart:convert';
-
-import 'package:geolocator/models/location_options.dart';
+part of geolocator;
 
 class Codec {
   static String encodeLocationOptions(LocationOptions locationOptions) =>
@@ -12,7 +10,7 @@ class Codec {
 
   static Map<String, dynamic> _locationOptionsMap(
           LocationOptions locationOptions) =>
-      {
+      <String, dynamic>{
         "accuracy": Codec.encodeEnum(locationOptions.accuracy),
         "distanceFilter": locationOptions.distanceFilter
       };

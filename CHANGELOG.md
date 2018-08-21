@@ -1,3 +1,36 @@
+## [1.6.0]
+
+* Use the Location Services (through the `FusedLocationProviderClient`) on Android if available, otherwise fallback to the `LocationManager` class;
+* Make sure that on Android the last know location is returned immediately on the stream when requesting location updates through the `getPositionStream` method;
+* Updated documentation on adding location permissions on Android.
+
+## [1.5.0]
+
+* It is now possible to check the location permissions using the `checkGeolocationStatus` method [[ISSUE #51](https://github.com/BaseflowIT/flutter-geolocator/issues/51)].
+* Improved the example App [[ISSUE #54](https://github.com/BaseflowIT/flutter-geolocator/issues/54)]
+* Solved a bug on Android causing a memory leak when you stop listening to the position stream.
+* **breaking** Solved a bug on Android where permissions could be requested more then once simultaniously [[ISSUE #58](https://github.com/BaseflowIT/flutter-geolocator/issues/58)]
+* Solved a bug on Android where requesting permissions twice would cause the App to crash [[ISSUE #61](https://github.com/BaseflowIT/flutter-geolocator/issues/61)]
+
+> **Important:**
+> 
+> To be able to correctly fix [issue #58](https://github.com/BaseflowIT/flutter-geolocator/issues/58) we had to change the `getPositionStream` method into a `async` method. This means the signature of the method has been changed from:
+>
+> `Stream<Position> getPositionStream([LocationOptions locationOptions = const LocationOptions()])` 
+>
+> to 
+>
+> `Future<Stream<Position>> getPositionStream([LocationOptions locationOptions = const LocationOptions()])`. 
+>
+> Meaning as a developer you'll now have to `await` the result of the method to get access to the actual stream.
+
+## [1.4.0]
+
+* Added feature to query the last known location that is stored on the device using the `getLastKnownLocation` method;
+* **breaking** Renamed the `getPosition` to `getCurrentPosition`;
+* Fixed bug where calling `getCurrentPosition` on Android resulted in returning the last known location;
+* **breaking** Renamed methods `toPlacemark` and `fromPlacemark` respectively to the, more meaningfull names, `placemarkFromAddress` and `placemarkFromCoordinates`;
+
 ## [1.3.1]
 
 * Added support for iOS `kCLLocationAccurayBestForNavigation` (defaults to `best` when on Android).

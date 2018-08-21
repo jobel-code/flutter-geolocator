@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/pub/v/geolocator.svg)](https://pub.dartlang.org/packages/geolocator)
 
-A Flutter geolocation plugin which provides easy access to the platform specific location services ([LocationManager](https://developer.android.com/reference/android/location/LocationManager) on Android and [CLLocationManager](https://developer.apple.com/documentation/corelocation/cllocationmanager) on iOS).
+A Flutter geolocation plugin which provides easy access to the platform specific location services ([FusedLocationProviderClient](https://developers.google.com/android/reference/com/google/android/gms/location/FusedLocationProviderClient) or if not available the [LocationManager](https://developer.android.com/reference/android/location/LocationManager) on Android and [CLLocationManager](https://developer.apple.com/documentation/corelocation/cllocationmanager) on iOS).
 
 Branch  | Build Status 
 ------- | ------------
@@ -12,7 +12,9 @@ master  | [![Build Status](https://travis-ci.com/BaseflowIT/flutter-geolocator.s
 ## Features
 
 * Get the current location of the device;
+* Get the last known location;
 * Get continuous location updates;
+* Check if location services are enabled on the device;
 * Translate an address to geocoordinates and vice verse (a.k.a. Geocoding);
 * Calculate the distance (in meters) between two geocoordinates.
 
@@ -22,7 +24,7 @@ To use this plugin, add `geolocator` as a [dependency in your pubspec.yaml file]
 
 ```yaml
 dependencies:
-  geolocator: '^1.3.1'
+  geolocator: '^1.6.0'
 ```
 
 > **NOTE:** There's a known issue with integrating plugins that use Swift into a Flutter project created with the Objective-C template. See issue [Flutter#16049](https://github.com/flutter/flutter/issues/16049) for help on integration.
@@ -31,14 +33,20 @@ dependencies:
 
 ### Geolocation
 
-To query the current location of the device simply make a call to the `getPosition` method:
+To query the current location of the device simply make a call to the `getCurrentPosition` method:
 
 ``` dart
 import 'package:geolocator/geolocator.dart';
-import 'package:geolocator/models/location_accuracy.dart';
-import 'package:geolocator/models/position.dart';
 
-Position position = await Geolocator().getPosition(LocationAccuracy.High);
+Position position = await Geolocator().getCurrentPosition(LocationAccuracy.high);
+```
+
+To query the last known location retrieved stored on the device you can use the `getLastKnownPosition` method (note that this can result in a `null` value when no location details are available):
+
+``` dart
+import 'package:geolocator/geolocator.dart';
+
+Position position = await Geolocator().getLastKnownPosition(LocationAccuracy.high);
 ```
 
 To listen for location changes you can subscribe to the `onPositionChanged` stream. Supply an instance of the `LocationOptions` class to configure
@@ -46,11 +54,9 @@ the desired accuracy and the minimum distance change (in meters) before updates 
 
 ``` dart
 import 'package:geolocator/geolocator.dart';
-import 'package:geolocator/models/location_accuracy.dart';
-import 'package:geolocator/models/position.dart';
 
 var geolocator = Geolocator();
-var locationOptions = LocationOptions(accuracy: LocationAccuracy.High, distanceFilter: 10);
+var locationOptions = LocationOptions(accuracy: LocationAccuracy.high, distanceFilter: 10);
 
 StreamSubscription<Position> positionStream = geolocator.getPositionStream(locationOptions).listen(
     (Position position) {
@@ -58,24 +64,30 @@ StreamSubscription<Position> positionStream = geolocator.getPositionStream(locat
     });
 ```
 
-### Geocoding
-
-To translate an address into latitude and longitude coordinates you can use the `toPlacemark` method:
+To check if location services are enabled you can call the `checkGeolocationStatus` method. This method returns a value of the `GeolocationStatus` enum indicating the availability of the location services on the device. Optionally you can specify if you want to test for `GeolocationPermission.locationAlways` or `GeolocationPermission.locationWhenInUse` (by default `GeolocationPermission.location` is used, which checks for either one of the previously mentioned permissions). Example usage:
 
 ``` dart
 import 'package:geolocator/geolocator.dart';
-import 'package:geolocator/models/placemark.dart';
 
-Placemark placemark = await Geolocator().toPlacemark("Gronausestraat 710, Enschede");
+GeolocationStatus geolocationStatus  = await Geolocator.checkGeolocationStatus();
 ```
 
-If you want to translate latitude and longitude coordinates into an address you can use the `fromPlacemark` method:
+### Geocoding
+
+To translate an address into latitude and longitude coordinates you can use the `placemarkFromAddress` method:
 
 ``` dart
 import 'package:geolocator/geolocator.dart';
-import 'package:geolocator/models/placemark.dart';
 
-Placemark placemark = await new Geolocator().toPlacemark(52.2165157, 6.9437819);
+Placemark placemark = await Geolocator().placemarkFromAddress("Gronausestraat 710, Enschede");
+```
+
+If you want to translate latitude and longitude coordinates into an address you can use the `placemarkFromCoordinates` method:
+
+``` dart
+import 'package:geolocator/geolocator.dart';
+
+Placemark placemark = await new Geolocator().placemarkFromCoordinates(52.2165157, 6.9437819);
 ```
 
 ### Calculate distance
@@ -101,12 +113,14 @@ See also the [example](example/lib/main.dart) project for a complete implementat
 
 ### Android
 
-On Android you'll need to add the `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION` permissions to your Android Manifest. Todo so open the AndroidManifest.xml file and add the following two lines as direct children of the `<manifest>` tag:
+On Android you'll need to add either the `ACCESS_COARSE_LOCATION` or the `ACCESS_FINE_LOCATION` permission to your Android Manifest. Todo so open the AndroidManifest.xml file and one of the following two lines as direct children of the `<manifest>` tag:
 
 ``` xml
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 ```
+
+> **NOTE:** Specifying the `ACCESS_COARSE_LOCATION` permission results in location updates with an accuracy approximately equivalant to a city block. More information can be found [here](https://developer.android.com/training/location/retrieve-current#permissions).
 
 ### iOS
 

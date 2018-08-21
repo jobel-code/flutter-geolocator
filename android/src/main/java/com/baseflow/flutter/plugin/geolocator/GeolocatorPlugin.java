@@ -1,12 +1,7 @@
 package com.baseflow.flutter.plugin.geolocator;
 
-import com.baseflow.flutter.plugin.geolocator.tasks.CalculateDistanceTask;
-import com.baseflow.flutter.plugin.geolocator.tasks.ForwardGeocodingTask;
-import com.baseflow.flutter.plugin.geolocator.tasks.OneTimeLocationTask;
-import com.baseflow.flutter.plugin.geolocator.tasks.ReverseGeocodingTask;
-import com.baseflow.flutter.plugin.geolocator.tasks.StreamLocationTask;
 import com.baseflow.flutter.plugin.geolocator.tasks.Task;
-import com.baseflow.flutter.plugin.geolocator.tasks.TaskContext;
+import com.baseflow.flutter.plugin.geolocator.tasks.TaskFactory;
 
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodChannel;
@@ -16,7 +11,8 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 
-import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -27,7 +23,8 @@ public class GeolocatorPlugin implements MethodCallHandler, EventChannel.StreamH
     private static final String METHOD_CHANNEL_NAME = "flutter.baseflow.com/geolocator/methods";
     private static final String EVENT_CHANNEL_NAME = "flutter.baseflow.com/geolocator/events";
 
-    private final ArrayList<Task> mTasks = new ArrayList<>();
+    @SuppressWarnings("MismatchedQueryAndUpdateOfCollection") // mTasks is used to track active tasks, when tasks completes it is removed from the map
+    private final Map<UUID, Task> mTasks = new HashMap<>();
     private final Registrar mRegistrar;
     private Task mStreamLocationTask;
 
@@ -49,30 +46,45 @@ public class GeolocatorPlugin implements MethodCallHandler, EventChannel.StreamH
 
     @Override
     public void onMethodCall(MethodCall call, Result result) {
-        TaskContext context = TaskContext.BuildFromMethodResult(
-                mRegistrar,
-                result,
-                call.arguments,
-                this);
-
-        if (call.method.equals("getPosition")) {
-            Task task = new OneTimeLocationTask(context);
-            mTasks.add(task);
-            task.startTask();
-        } else if (call.method.equals("toPlacemark")) {
-            Task task = new ForwardGeocodingTask(context);
-            mTasks.add(task);
-            task.startTask();
-        } else if (call.method.equals("fromPlacemark")) {
-            Task task = new ReverseGeocodingTask(context);
-            mTasks.add(task);
-            task.startTask();
-        } else if (call.method.equals("distanceBetween")) {
-            Task task = new CalculateDistanceTask(context);
-            mTasks.add(task);
-            task.startTask();
-        } else {
-            result.notImplemented();
+        switch (call.method) {
+            case "getLastKnownPosition": {
+                Task task = TaskFactory.createLastKnownLocationTask(
+                        mRegistrar, result, call.arguments, this);
+                mTasks.put(task.getTaskID(), task);
+                task.startTask();
+                break;
+            }
+            case "getCurrentPosition": {
+                Task task = TaskFactory.createCurrentLocationTask(
+                        mRegistrar, result, call.arguments, this);
+                mTasks.put(task.getTaskID(), task);
+                task.startTask();
+                break;
+            }
+            case "placemarkFromAddress": {
+                Task task = TaskFactory.createForwardGeocodingTask(
+                        mRegistrar, result, call.arguments, this);
+                mTasks.put(task.getTaskID(), task);
+                task.startTask();
+                break;
+            }
+            case "placemarkFromCoordinates": {
+                Task task = TaskFactory.createReverseGeocodingTask(
+                        mRegistrar, result, call.arguments, this);
+                mTasks.put(task.getTaskID(), task);
+                task.startTask();
+                break;
+            }
+            case "distanceBetween": {
+                Task task = TaskFactory.createCalculateDistanceTask(
+                        mRegistrar, result, call.arguments, this);
+                mTasks.put(task.getTaskID(), task);
+                task.startTask();
+                break;
+            }
+            default:
+                result.notImplemented();
+                break;
         }
     }
 
@@ -80,21 +92,15 @@ public class GeolocatorPlugin implements MethodCallHandler, EventChannel.StreamH
     public void onListen(Object o, EventChannel.EventSink eventSink) {
         if (mStreamLocationTask != null) {
             eventSink.error(
-                    "ALLREADY_LISTENING",
+                    "ALREADY_LISTENING",
                     "You are already listening for location changes. Create a new instance or stop listening to the current stream.",
                     null);
 
             return;
         }
 
-        TaskContext context = TaskContext.BuildFromEventSink(
-                mRegistrar,
-                eventSink,
-                o,
-                this);
-
-        mStreamLocationTask = new StreamLocationTask(
-                context);
+        mStreamLocationTask = TaskFactory.createStreamLocationUpdatesTask(
+                mRegistrar, eventSink, o, this);
         mStreamLocationTask.startTask();
     }
 
@@ -107,18 +113,7 @@ public class GeolocatorPlugin implements MethodCallHandler, EventChannel.StreamH
     }
 
     public void onCompletion(UUID taskID) {
-        Task taskToRemove = null;
-
-        for (Task task : mTasks) {
-            if(task.getTaskID() == taskID) {
-                taskToRemove = task;
-                break;
-            }
-        }
-
-        if(taskToRemove != null) {
-            mTasks.remove(taskToRemove);
-        }
+        mTasks.remove(taskID);
     }
 
 
